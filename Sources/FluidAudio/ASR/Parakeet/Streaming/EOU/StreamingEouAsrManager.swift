@@ -216,7 +216,12 @@ public actor StreamingEouAsrManager {
     /// Total samples processed (for timing)
     private var totalSamplesProcessed: Int = 0
 
-    public private(set) var configuration: MLModelConfiguration
+    // volocal:patched — `nonisolated(unsafe) public var`: a CoreML configuration is
+    // configured once, handed to `MLModel.load`, and never mutated afterwards. It has to
+    // be settable from outside, because an actor cannot be *given* a non-Sendable value:
+    // Swift 6 refuses with "sending value of non-Sendable type 'MLModelConfiguration'
+    // risks causing data races". See scripts/patch-fluid-audio.sh.
+    nonisolated(unsafe) public var configuration: MLModelConfiguration
     public let debugFeatures: Bool
     private var debugFeatureBuffer: [Float] = []
 
