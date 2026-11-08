@@ -52,10 +52,16 @@ public enum PocketTtsResourceDownloader {
 
         let required = ModelNames.PocketTTS.requiredModels(
             precision: precision, placement: placement)
-        let allPresent = required.allSatisfy { model in
-            FileManager.default.fileExists(
-                atPath: languageRoot.appendingPathComponent(model).path)
-        }
+        // **A directory that exists is not a model that loads.** Pointlook, 2026-11-07: the
+        // `flowlm_step.mlmodelc` directory was present, but `weights/weight.bin` was missing and
+        // only `weight.bin.partial` (23.3 MB) remained from an interrupted download. The bare
+        // `fileExists` check below declared the cache warm, `PocketTtsModelStore` loaded
+        // `cond_prefill` and then threw on `flowlm_step`, and every answer stalled at
+        // `WORKAGENT_TTS submit`. `ModelCache.isCacheComplete` is the partial-aware check (#819):
+        // a compiled bundle must have its layout and no `*.partial` staging file, so the
+        // downloader re-runs and resumes the interrupted weights.
+        let allPresent = ModelCache.isCacheComplete(
+            at: languageRoot, requiredFiles: required)
 
         if allPresent {
             logger.info(
